@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>X 媒体下载助手 - 设置</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: #f7f9fc;
+      color: #1a1a2e;
+      padding: 30px 40px;
+      max-width: 640px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .sub {
+      color: #657786;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .section h2 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .field {
+      margin-bottom: 16px;
+    }
+    .field:last-child { margin-bottom: 0; }
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #536471;
+      margin-bottom: 5px;
+    }
+    .field .hint {
+      font-size: 12px;
+      color: #8b98a5;
+      margin-top: 4px;
+    }
+    .field input[type="text"] {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid #d1d9e0;
+      border-radius: 8px;
+      font-size: 14px;
+      background: #fafbfc;
+      transition: border-color 0.2s;
+    }
+    .field input[type="text"]:focus {
+      outline: none;
+      border-color: #1d9bf0;
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(29,155,240,0.12);
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .badge-ok { background: #e8f5e9; color: #2e7d32; }
+    .badge-info { background: #e3f2fd; color: #1565c0; }
+    .last-path-box {
+      background: #f5f7fa;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #536471;
+      word-break: break-all;
+    }
+    .last-path-box .label { font-weight: 500; margin-bottom: 3px; }
+    .last-path-box .path { color: #1a1a2e; font-family: monospace; }
+    .actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 20px;
+    }
+    .btn {
+      padding: 10px 28px;
+      border: none;
+      border-radius: 24px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-primary {
+      background: #1d9bf0;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #1a8cd8; }
+    .btn-primary:active { transform: scale(0.97); }
+    .btn-secondary {
+      background: #e0e6ed;
+      color: #1a1a2e;
+    }
+    .btn-secondary:hover { background: #d1d9e0; }
+    .save-msg {
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .save-msg.show { opacity: 1; }
+    .save-msg.success { color: #2e7d32; }
+    .save-msg.error { color: #c62828; }
+    hr { border: none; border-top: 1px solid #e1e8ed; margin: 16px 0; }
+    .tip {
+      background: #fff8e1;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: #795548;
+      line-height: 1.5;
+    }
+    .tip strong { color: #4e342e; }
+  </style>
+</head>
+<body>
+
+  <h1>📥 X 媒体下载助手</h1>
+  <p class="sub">在 X(Twitter) 的图片和视频上添加下载按钮</p>
+
+  <!-- 路径设置 -->
+  <div class="section">
+    <h2>📁 默认下载路径</h2>
+    <p style="font-size:13px;color:#657786;margin-bottom:14px;">
+      路径是"另存为"对话框中的建议路径。支持绝对路径（如 <code>D:\OneDrive\图片\瑟瑟\</code>）
+      或相对默认下载目录的路径（如 <code>X\Images\</code>）。
+    </p>
+    <div class="field">
+      <label>🖼️ 图片默认路径</label>
+      <input type="text" id="imagePath" placeholder='D:\OneDrive\图片\瑟瑟\' />
+      <div class="hint">下载图片时"另存为"对话框的默认建议路径</div>
+    </div>
+    <div class="field">
+      <label>🎬 视频默认路径</label>
+      <input type="text" id="videoPath" placeholder='D:\OneDrive\图片\杂视频\' />
+      <div class="hint">下载视频时"另存为"对话框的默认建议路径</div>
+    </div>
+  </div>
+
+  <!-- 上次实际路径 -->
+  <div class="section">
+    <h2>🕒 上次实际保存路径</h2>
+    <p style="font-size:13px;color:#657786;margin-bottom:12px;">
+      下面是使用"另存为"对话框后记住的路径，下次预填时会使用它。
+    </p>
+    <div class="field">
+      <div class="last-path-box">
+        <div class="label">🖼️ 图片</div>
+        <div class="path" id="lastImageDisplay">（暂无记录）</div>
+      </div>
+    </div>
+    <div class="field">
+      <div class="last-path-box">
+        <div class="label">🎬 视频</div>
+        <div class="path" id="lastVideoDisplay">（暂无记录）</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 操作按钮 -->
+  <div class="actions">
+    <button class="btn btn-primary" id="saveBtn">💾 保存设置</button>
+    <button class="btn btn-secondary" id="resetBtn">🔄 重置默认</button>
+    <span class="save-msg" id="saveMsg"></span>
+  </div>
+
+  <!-- 使用说明 -->
+  <div class="tip" style="margin-top:24px;">
+    <strong>💡 使用说明：</strong>安装后访问 X.com，鼠标悬停在图片或视频上，右下角会出现 <strong>⬇️ 下载按钮</strong>。
+    点击后弹出"另存为"对话框，选择保存位置即可。<br />
+    图片和视频的路径会<strong>分别记忆</strong>，下次自动使用上次保存的位置。
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

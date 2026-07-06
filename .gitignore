@@ -1,0 +1,17 @@
+# OS
+Thumbs.db
+.DS_Store
+*.swp
+*.swo
+
+# IDE
+.idea/
+.vscode/
+*.suo
+
+# Python
+__pycache__/
+*.pyc
+
+# Git
+.git/
