@@ -1,44 +1,32 @@
-// X Media Downloader — Background Service Worker (v5)
-// 简化：只负责接收下载请求，用 saveAs:true 弹出另存为
+// X Media Downloader — Background Service Worker (v6)
+// 静默下载，支持路径前缀
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'download') {
     const { url, mediaType, filename } = message;
-    
-    console.log('[XDL] bg received:', { 
-      url: (url || '').substring(0, 50), 
-      filename,
-      mediaType,
-    });
-
-    if (!url) {
-      sendResponse({ success: false, error: 'no url' });
-      return;
-    }
 
     chrome.downloads.download(
       {
         url,
         filename: filename || 'download',
-        saveAs: true,
+        saveAs: false,
         conflictAction: 'uniquify',
       },
       (downloadId) => {
         if (chrome.runtime.lastError) {
           const err = chrome.runtime.lastError.message || 'unknown';
-          console.error('[XDL] bg error:', err);
+          console.error('[XDL] download error:', err, 'filename:', filename);
           sendResponse({ success: false, error: err });
           return;
         }
         if (downloadId !== undefined) {
-          console.log('[XDL] bg success, id:', downloadId);
           sendResponse({ success: true, downloadId });
         } else {
           sendResponse({ success: false, error: 'no id' });
         }
       }
     );
-    return true; // keep channel open for async response
+    return true;
   }
 
   if (message.action === 'getConfig') {
@@ -55,5 +43,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       () => sendResponse({ success: true })
     );
     return true;
+  }
+});
+
+// 下载完成后记忆路径
+chrome.downloads.onChanged.addListener((delta) => {
+  if (delta.state && delta.state.current === 'complete') {
+    chrome.downloads.search({ id: delta.id }, (results) => {
+      if (!results || results.length === 0) return;
+      const finalPath = results[0].filename;
+      const norm = finalPath.replace(/\\/g, '/');
+      const idx = norm.toLowerCase().indexOf('/downloads/');
+      if (idx >= 0) {
+        const rel = norm.substring(idx + '/downloads/'.length);
+        const lastSlash = rel.lastIndexOf('/');
+        const dir = lastSlash >= 0 ? rel.substring(0, lastSlash + 1) : rel + '/';
+        // 判断是图片还是视频（通过扩展名）
+        const isVideo = /\.(mp4|webm|mov|avi)$/i.test(rel);
+        const key = isVideo ? 'lastVideoDir' : 'lastImageDir';
+        chrome.storage.local.set({ [key]: dir });
+      }
+    });
   }
 });

@@ -1,12 +1,11 @@
-// X Media Downloader — Content Script (v9 ISOLATED world)
-// 点击书签按钮 → 直接下载所有媒体 + 正常书签
-// 无弹窗，无浮动按钮
+// X Media Downloader — Content Script (v10 ISOLATED world)
+// 静默下载 + 自动关注未关注推主
 
 (function () {
   'use strict';
 
   // ================================================================
-  // 媒体缓存（由 hook.js 通过 postMessage 填充）
+  // 媒体缓存（来自 hook.js）
   // ================================================================
   const mediaInfoCache = new Map();
 
@@ -19,7 +18,7 @@
   });
 
   // ================================================================
-  // Toast
+  // CSS (Toast only)
   // ================================================================
   const CSS = `
     .xdl-toast {
@@ -32,7 +31,6 @@
     }
     @keyframes xdl-fade { 0%{opacity:0;transform:translateX(-50%)translateY(12px)} 12%{opacity:1;transform:translateX(-50%)translateY(0)} 75%{opacity:1} 100%{opacity:0;transform:translateX(-50%)translateY(-8px)} }
   `;
-
   function injectCSS() {
     const s = document.createElement('style');
     s.textContent = CSS;
@@ -69,12 +67,10 @@
   function getMediaList(tweetArticle) {
     const list = [];
 
-    // 图片
     tweetArticle.querySelectorAll('[data-testid="tweetPhoto"] img[src*="twimg.com"]').forEach(img => {
       list.push({ type: 'image', url: getBestImageUrl(img) });
     });
 
-    // 视频
     tweetArticle.querySelectorAll('[data-testid="videoPlayer"], [data-testid="videoComponent"]').forEach(cont => {
       const video = cont.querySelector('video');
       if (!video) return;
@@ -97,7 +93,6 @@
           }
         }
       }
-
       if (bestUrl) list.push({ type: 'video', url: bestUrl });
     });
 
@@ -105,7 +100,7 @@
   }
 
   // ================================================================
-  // 获取文件名
+  // 文件名
   // ================================================================
   function getFilename(url, type) {
     try {
@@ -118,30 +113,58 @@
   }
 
   // ================================================================
-  // 触发下载（chrome.downloads.download + saveAs:true）
+  // 触发静默下载
   // ================================================================
   async function downloadMedia(url, type) {
     if (!url) return false;
-    const filename = getFilename(url, type);
-    console.log('[XDL] download request:', { url: url.substring(0, 50), filename });
 
-    try {
-      const resp = await chrome.runtime.sendMessage({
-        action: 'download',
-        url,
-        mediaType: type,
-        filename: filename,
+    return new Promise((resolve) => {
+      chrome.storage.local.get(['imagePath', 'videoPath', 'lastImageDir', 'lastVideoDir'], (data) => {
+        const dir = type === 'image'
+          ? (data.lastImageDir || data.imagePath || 'X/Images/')
+          : (data.lastVideoDir || data.videoPath || 'X/Videos/');
+        const fn = getFilename(url, type);
+        const prefix = dir.endsWith('/') ? dir : dir + '/';
+
+        chrome.runtime.sendMessage({
+          action: 'download',
+          url,
+          mediaType: type,
+          filename: prefix + fn,
+          saveAs: false,
+        }, (resp) => {
+          resolve(resp && resp.success);
+        });
       });
-      console.log('[XDL] download response:', resp);
-      return resp && resp.success;
-    } catch (err) {
-      console.error('[XDL] sendMessage failed:', err);
-      return false;
-    }
+    });
   }
 
   // ================================================================
-  // 拦截书签按钮 — 不阻止书签，额外触发下载
+  // 自动关注
+  // ================================================================
+  function autoFollow(tweetArticle) {
+    // 找关注按钮: X 的未关注按钮有 data-testid="follow" 或 data-testid="userFollow"
+    const followBtn = tweetArticle.querySelector(
+      '[data-testid="follow"], [data-testid="userFollow"], [data-testid="followButton"]'
+    );
+    if (!followBtn) return false;
+
+    // 检查是否真的是"关注"按钮（不是"正在关注"或"已关注"）
+    if (followBtn.getAttribute('aria-label')?.includes('取消') ||
+        followBtn.getAttribute('data-testid') === 'unfollow') {
+      return false;
+    }
+
+    // 只在按钮文字为"关注"时点击
+    const text = followBtn.textContent?.trim() || '';
+    if (text !== '关注' && text !== 'Follow') return false;
+
+    followBtn.click();
+    return true;
+  }
+
+  // ================================================================
+  // 拦截书签按钮
   // ================================================================
   function installBookmarkInterceptor() {
     document.addEventListener('click', async (e) => {
@@ -150,22 +173,24 @@
       const tweet = btn.closest('article[data-testid="tweet"]');
       if (!tweet) return;
 
-      // 直接执行下载（不使用 setTimeout，保证用户手势对 showSaveFilePicker 有效）
+      // 1. 自动关注
+      const followed = autoFollow(tweet);
+
+      // 2. 静默下载媒体
       const mediaList = getMediaList(tweet);
-      if (mediaList.length === 0) return;
-
-      showToast(`📥 正在下载 ${mediaList.length} 个文件...`);
-
-      let success = 0;
-      for (const item of mediaList) {
-        const ok = await downloadMedia(item.url, item.type);
-        if (ok) success++;
-      }
-
-      if (success > 0) {
-        showToast(`✅ 已保存 ${success}/${mediaList.length} 个文件`);
-      } else {
-        showToast('⚠️ 保存失败');
+      if (mediaList.length > 0) {
+        showToast(`📥 下载中 (${mediaList.length}个)`);
+        let success = 0;
+        for (const item of mediaList) {
+          if (await downloadMedia(item.url, item.type)) success++;
+        }
+        if (followed) {
+          showToast(`✅ 已关注 + 已保存 ${success} 个文件`);
+        } else {
+          showToast(`✅ 已保存 ${success} 个文件`);
+        }
+      } else if (followed) {
+        showToast('✅ 已关注');
       }
     }, true);
   }
@@ -176,7 +201,7 @@
   function init() {
     injectCSS();
     installBookmarkInterceptor();
-    console.log('[XDL] v9 ready ✅ — 点击书签 → 正常收藏 + 自动下载');
+    console.log('[XDL] v10 ready ✅ — 静默下载 + 自动关注');
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
